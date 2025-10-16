@@ -349,12 +349,12 @@ Our Enhanced Multimodal Fusion MLP successfully addresses the Amazon product pri
 **Repository Structure:**
 ```
 project/
-├── enhanced_mlp_fusion.py          # Main training script
+├── optimised.py          # Main training script
 ├── final_X_train_medium_with_brand.npy  # Training embeddings
 ├── final_X_test_medium_with_brand.npy   # Test embeddings
 ├── train.csv                       # Training data
 ├── test.csv                        # Test data
-└── enhanced_mlp_fusion_submission.csv   # Final submission
+└── test_out.csv   # Final submission
 ```
 
 **Drive Link:** [Insert your Google Drive/GitHub link here]
