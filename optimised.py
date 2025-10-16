@@ -1,6 +1,4 @@
-# ===================================================================
-# OPTIMIZED MLP FUSION FOR TEXT + IMAGE EMBEDDINGS (COMPLETE & CORRECTED)
-# ===================================================================
+# OPTIMIZED MLP FUSION FOR TEXT + IMAGE EMBEDDINGS
 
 import torch
 import torch.nn as nn
@@ -17,12 +15,11 @@ import warnings
 warnings.filterwarnings('ignore')
 
 print("="*70)
-print("🚀 MLP FUSION: Text + Image Embeddings (Corrected)")
+print("MLP FUSION: Text + Image Embeddings")
 print("="*70)
 
-# ===================================================================
 # ADVANCED MLP ARCHITECTURE
-# ===================================================================
+
 class MultimodalFusionMLP(nn.Module):
     """
     Advanced fusion with separate encoders and attention.
@@ -71,9 +68,8 @@ class MultimodalFusionMLP(nn.Module):
         output = self.fusion(fused)
         return output
 
-# ===================================================================
 # TRAINING FUNCTION (UPDATED FOR 3 INPUTS)
-# ===================================================================
+
 def train_mlp_fusion(X_text_tr, X_image_tr, X_other_tr, y_tr, 
                      X_text_val, X_image_val, X_other_val, y_val,
                      epochs=100, batch_size=256, lr=5e-4):
@@ -129,9 +125,8 @@ def train_mlp_fusion(X_text_tr, X_image_tr, X_other_tr, y_tr,
     model.load_state_dict(best_model_state)
     return model
 
-# ===================================================================
 # PREDICTION FUNCTION (UPDATED FOR 3 INPUTS)
-# ===================================================================
+
 def predict_mlp(model, X_text, X_image, X_other, batch_size=256):
     device = next(model.parameters()).device
     model.eval(); predictions = []
@@ -145,17 +140,14 @@ def predict_mlp(model, X_text, X_image, X_other, batch_size=256):
             predictions.append(output.cpu().numpy())
     return np.vstack(predictions).flatten()
 
-# ===================================================================
-# --- CORRECTED DATA LOADING AND SLICING ---
-# ===================================================================
+# CORRECTED DATA LOADING AND SLICING 
 print("\n[1/4] Loading and slicing combined embeddings...")
-SAVE_DIR = Path("embeddings_medium") # Use the correct folder
-df_train = pd.read_csv('data/train.csv')
+df_train = pd.read_csv('train.csv')
 y_train_log = np.log1p(df_train['price'].values)
 
-# Load the SINGLE, COMBINED feature files
-X_train_full = np.load(SAVE_DIR / "final_X_train_medium_with_brand.npy", allow_pickle=False)
-X_test_full = np.load(SAVE_DIR / "final_X_test_medium_with_brand.npy", allow_pickle=False)
+# Load the SINGLE, COMBINED feature files , use correct paths
+X_train_full = np.load("final_X_train_medium_with_brand.npy", allow_pickle=False)
+X_test_full = np.load("final_X_test_medium_with_brand.npy", allow_pickle=False)
 
 # Define the dimensions of your features
 text_dim = 384 # From SentenceTransformer
@@ -175,9 +167,8 @@ print(f"✓ Image: train{train_image.shape}, test{test_image.shape}")
 print(f"✓ Other: train{train_other.shape}, test{test_other.shape}")
 del X_train_full, X_test_full; gc.collect()
 
-# ===================================================================
 # SCALE FEATURES
-# ===================================================================
+
 print("\n[2/4] Scaling features...")
 text_scaler, image_scaler, other_scaler = RobustScaler(), RobustScaler(), RobustScaler()
 
@@ -188,15 +179,14 @@ train_other_scaled = other_scaler.fit_transform(train_other); test_other_scaled 
 print("✓ Features scaled")
 del train_text, train_image, train_other, test_text, test_image, test_other; gc.collect()
 
-# ===================================================================
 # K-FOLD TRAINING
-# ===================================================================
+
 print("\n[3/4] Training MLP with K-Fold...")
 N_FOLDS = 5; kf = KFold(n_splits=N_FOLDS, shuffle=True, random_state=42)
 oof_preds = np.zeros(len(train_text_scaled)); test_preds = np.zeros(len(test_text_scaled))
 
 for fold, (train_idx, val_idx) in enumerate(kf.split(train_text_scaled), 1):
-    print(f"\n{'─'*70}\n📊 FOLD {fold}/{N_FOLDS}")
+    print(f"\n{'─'*70}\nFOLD {fold}/{N_FOLDS}")
     
     model = train_mlp_fusion(
         train_text_scaled[train_idx], train_image_scaled[train_idx], train_other_scaled[train_idx], y_train_log[train_idx],
@@ -208,22 +198,22 @@ for fold, (train_idx, val_idx) in enumerate(kf.split(train_text_scaled), 1):
     
     val_pred_price = np.expm1(oof_preds[val_idx]); val_actual_price = np.expm1(y_train_log[val_idx])
     fold_smape = np.mean(2 * np.abs(val_pred_price - val_actual_price) / (np.abs(val_actual_price) + np.abs(val_pred_price) + 1e-8)) * 100
-    print(f"  📈 Fold {fold} SMAPE: {fold_smape:.4f}%")
+    print(f"Fold {fold} SMAPE: {fold_smape:.4f}%")
     
     del model; gc.collect(); torch.mps.empty_cache() if torch.backends.mps.is_available() else None
 
-# ===================================================================
-# FINAL EVALUATION & SUBMISSION
-# ===================================================================
+
+# FINAL EVALUATION
+
 print("\n[4/4] Final evaluation and submission...")
 oof_prices = np.expm1(oof_preds); actual_prices = df_train['price'].values
 overall_smape = np.mean(2 * np.abs(oof_prices - actual_prices) / (np.abs(actual_prices) + np.abs(oof_prices) + 1e-8)) * 100
-print("\n" + "="*70 + f"\n📊 FINAL OOF SMAPE: {overall_smape:.4f}%\n" + "="*70)
+print("\n" + "="*70 + f"\nFINAL OOF SMAPE: {overall_smape:.4f}%\n" + "="*70)
 
 final_predictions = np.expm1(test_preds); final_predictions = np.clip(final_predictions, 0.01, None)
-df_test = pd.read_csv('data/test.csv')
+df_test = pd.read_csv('test.csv')
 submission = pd.DataFrame({'sample_id': df_test['sample_id'],'price': final_predictions})
-submission.to_csv('mlp_fusion_submission.csv', index=False)
+submission.to_csv('test_out.csv', index=False)
 
-print("\n✅ Submission created: mlp_fusion_submission.csv")
-print("\n📋 First 10 predictions:"); print(submission.head(10))
+print("\nSubmission created: test_out.csv")
+print("\nFirst 10 predictions:"); print(submission.head(10))
